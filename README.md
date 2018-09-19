@@ -1,2 +1,2 @@
 # EDA093 - Operating systems
-# Repository for Fishur and Maghnuz
+> This is a repo for laborating on shell
