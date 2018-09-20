@@ -1,0 +1,2 @@
+warning: can't find squish-pty, so terminal input will fail
+bochs -q
