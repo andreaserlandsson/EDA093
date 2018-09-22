@@ -178,14 +178,6 @@ void execute_command(Command *c) {
 
 		pid = fork();
 
-		if(c->rstdout) {
-			FILE *f = freopen(c->rstdout, "w", stdout);
-		}
-		if(c->rstdin) {
-			int fd = open(c->rstdin, 0);
-			dup2(fd, 0);
-		}
-		
 		if (pid < 0) {
 			printf("Error!\n");
 		}
@@ -196,6 +188,15 @@ void execute_command(Command *c) {
 			waitpid(pid, 0, NULL);
 		}
 		else {
+
+			if(c->rstdout) {
+			FILE *f = freopen(c->rstdout, "w", stdout);
+			}
+			if(c->rstdin) {
+				int fd = open(c->rstdin, 0);
+				dup2(fd, 0);
+			}
+			
 			if(p->next) {
 				execute_pipes(c);
 			}

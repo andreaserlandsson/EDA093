@@ -1,0 +1,12 @@
+total 84
+-rwxrwxr-x. 1 mbrattlof mbrattlof  9672 Sep 19 16:19 a.out
+-rw-r-----. 1 mbrattlof mbrattlof  2267 Sep  8  2017 DESIGNDOC
+-rwxrwxr-x. 1 mbrattlof mbrattlof 20640 Sep 23 00:44 lsh
+-rwxr-----. 1 mbrattlof mbrattlof  4095 Sep 23 00:44 lsh.c
+-rw-rw-r--. 1 mbrattlof mbrattlof 12136 Sep 23 00:44 lsh.o
+-rwxr-----. 1 mbrattlof mbrattlof   383 Sep  8  2017 Makefile
+-rw-rw-r--. 1 mbrattlof mbrattlof     0 Sep 23 00:44 mange
+-rwxr-----. 1 mbrattlof mbrattlof  3154 Sep  8  2017 parse.c
+-rwxr-----. 1 mbrattlof mbrattlof   352 Sep 19 15:47 parse.h
+-rw-rw-r--. 1 mbrattlof mbrattlof 11608 Sep 22 21:07 parse.o
+-rw-rw-r--. 1 mbrattlof mbrattlof   232 Sep 21 10:00 test.c
