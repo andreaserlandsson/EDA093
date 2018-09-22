@@ -23,6 +23,11 @@
 #include <readline/history.h>
 #include "parse.h"
 #include <unistd.h>
+#include <signal.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 /*
  * Function declarations
@@ -32,7 +37,10 @@ void PrintCommand(int, Command *);
 void PrintPgm(Pgm *);
 void stripwhite(char *);
 void get_pgm(Command *c);
-void execute_command(void);
+void execute_command(Command *c);
+void init_command(Command *c);
+int backround_process(Command *c);
+void execute_pipes(Command *c);
 
 /* When non-zero, this global means the user is done using this program. */
 int done = 0;
@@ -68,6 +76,7 @@ int main(void) {
 			/* execute it */
 			n = parse(line, &cmd);
 			PrintCommand(n, &cmd);
+			init_command(&cmd);
 		}
     }
     
@@ -112,11 +121,88 @@ void PrintPgm (Pgm *p) {
 		printf("    [");
 	while (*pl) {
 		printf("%s ", *pl++);
+		
 	}
-	printf("]\n");
+		printf("]\n");
 	}
 }
 
+//int backround_process(Command c) {
+//}
+
+void init_command(Command *c) {
+
+	execute_command(c);
+
+}
+
+void execute_pipes(Command *c) {
+	int pipefd[2];
+	int pid;
+	int status;
+	Pgm *p = c->pgm;
+	
+	pipe(pipefd);
+	pid = fork();
+	
+	if (pid == 0) {
+	
+		close(pipefd[0]);
+		dup2(pipefd[1], 1);
+		p = p->next;
+	
+		if (p->next) {
+			execute_pipes(c);
+		}	
+		else {
+			execvp(*p->pgmlist, p->pgmlist);
+			exit(0);
+		}
+	}
+	else {
+		close(pipefd[1]);
+		dup2(pipefd[0], 0);
+		waitpid(pid, &status, 0);
+		execvp(*p->pgmlist, p->pgmlist);
+	}
+}
+
+void execute_command(Command *c) {
+	int pid;	
+
+	Pgm *p = c->pgm;	
+
+	if (p == NULL) {
+		return;
+	}
+
+		pid = fork();
+
+		if(c->rstdout) {
+			FILE *f = freopen(c->rstdout, "w", stdout);
+		}
+		if(c->rstdin) {
+			int fd = open(c->rstdin, 0);
+			dup2(fd, 0);
+		}
+		
+		if (pid < 0) {
+			printf("Error!\n");
+		}
+		else if (pid > 0 && c->bakground == 1) {
+			signal(SIGCHLD, SIG_IGN);
+		}
+		else if (pid > 0) {
+			waitpid(pid, 0, NULL);
+		}
+		else {
+			if(p->next) {
+				execute_pipes(c);
+			}
+			execvp(*p->pgmlist, p->pgmlist);	
+			exit(0);
+		}
+}
 
 /*
  * Name: stripwhite
