@@ -1,9 +1,15 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <time.h>
 
 int main() {
-	char cwd[255];
-	printf("%s\n", getlogin());
-	printf("%s\n", get_current_dir_name());
+	int i;
+	char *str[] = {"|", "/", "-", "\\", "|", "/", "-","\\", "|", '\0'};
+
+	for(i = 0; str[i] != '\0'; i++) {
+		printf("%s\r", str[i]);
+		fflush(stdout);
+		sleep(1);	
+	}
 }
 

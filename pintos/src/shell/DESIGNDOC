@@ -19,6 +19,9 @@ Andréas Erlandsson <anderlan@student.chalmers.se>
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course instructors.
+	
+	1. https://en.wikipedia.org/wiki/Parent_process
+	2. https://stackoverflow.com/a/18437957
 
 			   COMMAND SHELL
 			   =============
@@ -31,10 +34,15 @@ which parts.
 
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
+	
+	Magnus: about 20h
+	Andreas about 20h
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
 
+	- We worked pretty much alone and sharing ideas sometimes to the merge our ideas together.
+	- Talking to each other and other groups to solve certain problems.
 
 			  SURVEY QUESTIONS
 			  ================
@@ -47,19 +55,23 @@ penalized.  We can't fix things until we know about them.  :-)
 
 >> In your opinion, was this assignment, or any of the parts of it, too
 >> easy or too hard?  Did it take too long or too little time?
+	- It was about right, due to it was some time we programmed in C.
 
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
+	- Yes, process creation and defunct processes etc.
 
 >> Were there any parts of the assignment that you felt were unnecessarily
 >> tedious or pointless?
+	- No.
 
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
 >> find any of our guidance to be misleading?
+	- No.
 
 >> Do you have any suggestions for the instructor and/or TAs to more
 >> effectively assist students, either for future quarters or the remaining
 >> projects?
-
+	- No.
 >> Any other comments?
