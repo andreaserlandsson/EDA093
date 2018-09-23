@@ -233,7 +233,7 @@ void execute_command(Command *c) {
 			// Execute the last command in linked list
 			// or execute the empty command
 			if(execvp(*p->pgmlist, p->pgmlist) == -1) {
-				printf("Command %s not found!", *p->pgmlist);
+				printf("Command '%s' not found!\n", *p->pgmlist);
 				exit(0);
 			}
 			exit(0);
