@@ -55,7 +55,7 @@ int main(void) {
 	Command cmd;
 	int n;
 	
-	// Ignore CTRL-C in parent process e.g., shell.
+	// Ignore CTRL-C in parent process i.e., shell.
 	signal(SIGINT, signal_handler);
 
 	while (!done) {
