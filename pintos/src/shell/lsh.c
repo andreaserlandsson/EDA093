@@ -39,9 +39,7 @@ void PrintPgm(Pgm *);
 void stripwhite(char *);
 void get_pgm(Command *c);
 void execute_command(Command *c);
-void init_command(Command *c);
-int backround_process(Command *c);
-void execute_pipes(Command *c);
+void execute_pipes(Pgm *p);
 void signal_handler();
 
 /* When non-zero, this global means the user is done using this program. */
@@ -56,11 +54,13 @@ int done = 0;
 int main(void) {
 	Command cmd;
 	int n;
-
+	
+	// Ignore CTRL-C in parent process e.g., shell.
 	signal(SIGINT, signal_handler);
+
 	while (!done) {
 		char *line;
-		line = readline(">>> ");
+		line = readline("[username@localhost]$ ");
 
 		if (!line) {
 		/* Encountered EOF at top level */
@@ -78,8 +78,7 @@ int main(void) {
 			add_history(line);
 			/* execute it */
 			n = parse(line, &cmd);
-			PrintCommand(n, &cmd);
-			init_command(&cmd);
+			execute_command(&cmd);
 		}
     }
     
@@ -130,38 +129,40 @@ void PrintPgm (Pgm *p) {
 	}
 }
 
-//int backround_process(Command c) {
-//}
+/*	void execute_pipes(Pgm *p)
+ *	Takes pointer to Pgm which is only called if 
+ *	commands > 2, i.e., pipes */
 
-void init_command(Command *c) {
-
-	execute_command(c);
-
-}
-
-void execute_pipes(Command *c) {
+void execute_pipes(Pgm *p) {
 	int pipefd[2];
 	int pid;
 	int status;
-	Pgm *p = c->pgm;
 	
 	pipe(pipefd);
 	pid = fork();
-	
-	if (pid == 0) {
-	
+
+	if(pid < 0) {
+		printf("Error!");
+	}	
+
+	else if(pid == 0) {
+		
+		// Close the read end of the pipe and redirect write
 		close(pipefd[0]);
 		dup2(pipefd[1], 1);
 		p = p->next;
 	
+		// If there is more commands, do recursive
 		if (p->next) {
-			execute_pipes(c);
-		}	
+			execute_pipes(p);
+		}
+		//If no more commands execute in recursive manner	
 		else {
 			execvp(*p->pgmlist, p->pgmlist);
 			exit(0);
 		}
 	}
+	// If parent process, close write end and redirect read 
 	else {
 		close(pipefd[1]);
 		dup2(pipefd[0], 0);
@@ -170,6 +171,7 @@ void execute_pipes(Command *c) {
 	}
 }
 
+// Just a simple signal handler doing nothing
 void signal_handler() {
 	printf("\n");
 }
@@ -182,38 +184,58 @@ void execute_command(Command *c) {
 	if (p == NULL) {
 		return;
 	}
+		// Built in commands
 		// Returns 0 if identical, thus the !
 		if(!strcmp(*p->pgmlist, "exit")) {
 			exit(0);
 		}
+		// Built in command cd
 		else if(!strcmp(*p->pgmlist, "cd")) {
-			chdir(p->pgmlist[1]);
+			if(chdir(p->pgmlist[1]) == -1) {
+				perror("Error during cd");
+			}
 			return;
 		}
+		
+		// Fork first child process
 		pid = fork();
-
+		
+		// Error
 		if (pid < 0) {
 			printf("Error!\n");
 		}
+		// If backround process is set, reap
 		else if (pid > 0 && c->bakground == 1) {
+			// We don't care about the childs execution
+			// thus, we ignore the SIGCHLD signal
 			signal(SIGCHLD, SIG_IGN);
 		}
+		// If there is no background process
+		// we wait for the child to terminate
 		else if (pid > 0) {
 			waitpid(pid, 0, NULL);
 		}
+		// Child process code
 		else {
+			// If rstdout is set
 			if(c->rstdout) {
 			FILE *f = freopen(c->rstdout, "w", stdout);
 			}
+			// If rstdin is set
 			if(c->rstdin) {
 				int fd = open(c->rstdin, 0);
 				dup2(fd, 0);
 			}
-			
+			// If there is more commands call execute_pipes	
 			if(p->next) {
-				execute_pipes(c);
+				execute_pipes(p);
 			}
-			execvp(*p->pgmlist, p->pgmlist);	
+			// Execute the last command in linked list
+			// or execute the empty command
+			if(execvp(*p->pgmlist, p->pgmlist) == -1) {
+				printf("Command %s not found!", *p->pgmlist);
+				exit(0);
+			}
 			exit(0);
 		}
 }
@@ -237,7 +259,7 @@ void stripwhite (char *string) {
 	i = strlen( string ) - 1;
 	while (i> 0 && isspace (string[i])) {
 		i--;
-	}
+	}	
 
 	string [++i] = '\0';
 }
