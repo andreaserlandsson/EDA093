@@ -234,8 +234,9 @@ void execute_command(Command *c) {
 			}
 			// Execute the last command in linked list
 			// or execute the empty command
+			// And ugly printf function :-O
 			if(execvp(*p->pgmlist, p->pgmlist) == -1) {
-				printf("Command '%s' not found!\n", *p->pgmlist);
+				printf("[username@localhost]$ Command '%s' not found!\n", *p->pgmlist);
 				exit(0);
 			}
 			exit(0);

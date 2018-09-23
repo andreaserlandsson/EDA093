@@ -6,6 +6,8 @@
 
 ---- GROUP ----
 
+	Group 12
+
 >> Fill in the names and email addresses of your group members.
 
 Magnus Brattlof <brattlof@student.chalmers.se>
@@ -40,9 +42,9 @@ which parts.
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
-
-	- We worked pretty much alone and sharing ideas sometimes to the merge our ideas together.
-	- Talking to each other and other groups to solve certain problems.
+	
+	- We worked remotely most part of the time and met there and then to share ideas and merge our code.
+	- As mentioned above, we solved each problem separetely and then took the best and most robust idea.
 
 			  SURVEY QUESTIONS
 			  ================
@@ -56,7 +58,7 @@ penalized.  We can't fix things until we know about them.  :-)
 >> In your opinion, was this assignment, or any of the parts of it, too
 >> easy or too hard?  Did it take too long or too little time?
 
-	- It was about right, due to it was some time we programmed in C.
+	- It was about right, mostly due to it was some time we programmed in C and lacking knowledge of libraries etc.
 
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
