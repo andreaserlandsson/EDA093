@@ -138,7 +138,9 @@ void execute_pipes(Pgm *p) {
 	int pid;
 	int status;
 	
-	pipe(pipefd);
+	if(pipe(pipefd) == -1) {
+		perror("Error creating pipes!\n");
+	}
 	pid = fork();
 
 	if(pid < 0) {
@@ -192,7 +194,7 @@ void execute_command(Command *c) {
 		// Built in command cd
 		else if(!strcmp(*p->pgmlist, "cd")) {
 			if(chdir(p->pgmlist[1]) == -1) {
-				perror("Error during cd");
+				perror("Error during cd\n");
 			}
 			return;
 		}
@@ -202,7 +204,7 @@ void execute_command(Command *c) {
 		
 		// Error
 		if (pid < 0) {
-			printf("Error!\n");
+			perror("Error!\n");
 		}
 		// If backround process is set, reap
 		else if (pid > 0 && c->bakground == 1) {
