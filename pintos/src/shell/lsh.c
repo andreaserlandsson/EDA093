@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <string.h>
 
 /*
  * Function declarations
@@ -41,6 +42,7 @@ void execute_command(Command *c);
 void init_command(Command *c);
 int backround_process(Command *c);
 void execute_pipes(Command *c);
+void signal_handler();
 
 /* When non-zero, this global means the user is done using this program. */
 int done = 0;
@@ -55,6 +57,7 @@ int main(void) {
 	Command cmd;
 	int n;
 
+	signal(SIGINT, signal_handler);
 	while (!done) {
 		char *line;
 		line = readline(">>> ");
@@ -167,6 +170,10 @@ void execute_pipes(Command *c) {
 	}
 }
 
+void signal_handler() {
+	printf("\n");
+}
+
 void execute_command(Command *c) {
 	int pid;	
 
@@ -175,7 +182,14 @@ void execute_command(Command *c) {
 	if (p == NULL) {
 		return;
 	}
-
+		// Returns 0 if identical, thus the !
+		if(!strcmp(*p->pgmlist, "exit")) {
+			exit(0);
+		}
+		else if(!strcmp(*p->pgmlist, "cd")) {
+			chdir(p->pgmlist[1]);
+			return;
+		}
 		pid = fork();
 
 		if (pid < 0) {
@@ -188,7 +202,6 @@ void execute_command(Command *c) {
 			waitpid(pid, 0, NULL);
 		}
 		else {
-
 			if(c->rstdout) {
 			FILE *f = freopen(c->rstdout, "w", stdout);
 			}
