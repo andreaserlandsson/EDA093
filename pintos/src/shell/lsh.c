@@ -217,6 +217,13 @@ void execute_command(Command *c) {
 		else if (pid > 0) {
 			waitpid(pid, 0, NULL);
 		}
+		else if (pid == 0 && c->bakground) {
+			signal(SIGINT, SIG_IGN);
+        	if(execvp(*p->pgmlist, p->pgmlist) == -1) {
+            	printf("[username@localhost]$ Command '%s' not found!\n", *p->pgmlist);
+			exit(0);
+         	}
+		}
 		// Child process code
 		else if (pid == 0) {
 			// If rstdout is set
@@ -239,15 +246,8 @@ void execute_command(Command *c) {
 				printf("[username@localhost]$ Command '%s' not found!\n", *p->pgmlist);
 				exit(0);
 			}
-		else if (pid == 0 && c->bakground) {
-			signal(SIGINT, SIG_IGN);
-			if(execvp(*p->pgmlist, p->pgmlist) == -1) {
-                 printf("[username@localhost]$ Command '%s' not found!\n", *p->pgmlist);
-                 exit(0);
-		}
 			exit(0);
 		}
-	}
 }
 
 /*
