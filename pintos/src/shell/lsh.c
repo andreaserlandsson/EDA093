@@ -218,7 +218,7 @@ void execute_command(Command *c) {
 			waitpid(pid, 0, NULL);
 		}
 		// Child process code
-		else {
+		else if (pid == 0) {
 			// If rstdout is set
 			if(c->rstdout) {
 			FILE *f = freopen(c->rstdout, "w", stdout);
@@ -239,8 +239,15 @@ void execute_command(Command *c) {
 				printf("[username@localhost]$ Command '%s' not found!\n", *p->pgmlist);
 				exit(0);
 			}
+		else if (pid == 0 && c->bakground) {
+			signal(SIGINT, SIG_IGN);
+			if(execvp(*p->pgmlist, p->pgmlist) == -1) {
+                 printf("[username@localhost]$ Command '%s' not found!\n", *p->pgmlist);
+                 exit(0);
+		}
 			exit(0);
 		}
+	}
 }
 
 /*
