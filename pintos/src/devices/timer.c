@@ -29,6 +29,7 @@ static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
+void my_thread_action_func(struct thread *t, void *aux);
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
@@ -84,16 +85,35 @@ timer_elapsed (int64_t then)
   return timer_ticks () - then;
 }
 
+void my_thread_action_func(struct thread *t, void *aux) {
+
+	if(t->status == THREAD_BLOCKED) {
+		if(t->blk_time <= timer_ticks()) {
+			thread_unblock(t);
+		}
+	}
+}
+
 /* Sleeps for approximately TICKS timer ticks.  Interrupts must
    be turned on. */
 void
-timer_sleep (int64_t ticks) 
-{
-  int64_t start = timer_ticks ();
+timer_sleep (int64_t ticks) {
+//	int64_t start = timer_ticks ();
 
-  ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+	struct thread *t = thread_current();
+
+	// This is the time the thread has to wait, at least.
+	t->blk_time = timer_ticks() + ticks;	
+
+	intr_disable();
+	thread_block();
+	intr_enable();
+
+/*
+	ASSERT (intr_get_level () == INTR_ON);
+	while (timer_elapsed (start) < ticks) 
+		thread_yield ();
+*/
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -170,8 +190,9 @@ timer_print_stats (void)
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
-  ticks++;
-  thread_tick ();
+	ticks++;
+	thread_tick ();
+	thread_foreach(my_thread_action_func, NULL);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

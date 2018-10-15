@@ -100,6 +100,11 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+
+	/* Self defined */
+	int64_t blk_time;
+	int64_t thread_ticks;
+
   };
 
 /* If false (default), use round-robin scheduler.
