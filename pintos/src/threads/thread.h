@@ -104,6 +104,7 @@ struct thread
 	/* Self defined */
 	int64_t blk_time;
 	int64_t thread_ticks;
+	int64_t thread_start;
 
   };
 

@@ -87,9 +87,10 @@ timer_elapsed (int64_t then)
 
 void my_thread_action_func(struct thread *t, void *aux) {
 
-	if(t->status == THREAD_BLOCKED) {
-		if(t->blk_time <= timer_ticks()) {
+	if(t->status == THREAD_BLOCKED && t->thread_ticks > 0) {
+		if(timer_elapsed(t->thread_start) >= t->thread_ticks) {
 			thread_unblock(t);
+			t->thread_ticks = 0;
 		}
 	}
 }
@@ -100,15 +101,18 @@ void
 timer_sleep (int64_t ticks) {
 //	int64_t start = timer_ticks ();
 
-	struct thread *t = thread_current();
+	if(ticks > 0) {
+		struct thread *t = thread_current();
 
-	// This is the time the thread has to wait, at least.
-	t->blk_time = timer_ticks() + ticks;	
 
-	intr_disable();
-	thread_block();
-	intr_enable();
+		// This is the time the thread has to wait, at least.
+		t->thread_ticks = ticks;
+		t->thread_start = timer_ticks();	
 
+		intr_disable();
+		thread_block();
+		intr_enable();
+	}
 /*
 	ASSERT (intr_get_level () == INTR_ON);
 	while (timer_elapsed (start) < ticks) 
