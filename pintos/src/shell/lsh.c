@@ -22,6 +22,13 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "parse.h"
+#include <unistd.h>
+#include <signal.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <string.h>
 
 /*
  * Function declarations
@@ -30,6 +37,10 @@
 void PrintCommand(int, Command *);
 void PrintPgm(Pgm *);
 void stripwhite(char *);
+void get_pgm(Command *c);
+void execute_command(Command *c);
+void execute_pipes(Pgm *p);
+void signal_handler();
 
 /* When non-zero, this global means the user is done using this program. */
 int done = 0;
@@ -40,41 +51,42 @@ int done = 0;
  * Description: Gets the ball rolling...
  *
  */
-int main(void)
-{
-  Command cmd;
-  int n;
+int main(void) {
+	Command cmd;
+	int n;
+	
+	// Ignore CTRL-C in parent process i.e., shell.
+	signal(SIGINT, signal_handler);
 
-  while (!done) {
+	while (!done) {
+		char *line;
+		line = readline("[username@localhost]$ ");
 
-    char *line;
-    line = readline("> ");
+		if (!line) {
+		/* Encountered EOF at top level */
+		done = 1;
+		}
+		else {
+	/*
+	* Remove leading and trailing whitespace from the line
+	* Then, if there is anything left, add it to the history list
+	* and execute it.
+	*/
+		stripwhite(line);
 
-    if (!line) {
-      /* Encountered EOF at top level */
-      done = 1;
-    }
-    else {
-      /*
-       * Remove leading and trailing whitespace from the line
-       * Then, if there is anything left, add it to the history list
-       * and execute it.
-       */
-      stripwhite(line);
-
-      if(*line) {
-        add_history(line);
-        /* execute it */
-        n = parse(line, &cmd);
-        PrintCommand(n, &cmd);
-      }
+		if(*line) {
+			add_history(line);
+			/* execute it */
+			n = parse(line, &cmd);
+			execute_command(&cmd);
+		}
     }
     
-    if(line) {
-      free(line);
-    }
-  }
-  return 0;
+	if(line) {
+		free(line);
+    	}
+	}
+	return 0;
 }
 
 /*
@@ -83,14 +95,12 @@ int main(void)
  * Description: Prints a Command structure as returned by parse on stdout.
  *
  */
-void
-PrintCommand (int n, Command *cmd)
-{
-  printf("Parse returned %d:\n", n);
-  printf("   stdin : %s\n", cmd->rstdin  ? cmd->rstdin  : "<none>" );
-  printf("   stdout: %s\n", cmd->rstdout ? cmd->rstdout : "<none>" );
-  printf("   bg    : %s\n", cmd->bakground ? "yes" : "no");
-  PrintPgm(cmd->pgm);
+void PrintCommand (int n, Command *cmd) {
+	printf("Parse returned %d:\n", n);
+	printf("   stdin : %s\n", cmd->rstdin  ? cmd->rstdin  : "<none>" );
+	printf("   stdout: %s\n", cmd->rstdout ? cmd->rstdout : "<none>" );
+	printf("   bg    : %s\n", cmd->bakground ? "yes" : "no");
+	PrintPgm(cmd->pgm);
 }
 
 /*
@@ -99,25 +109,146 @@ PrintCommand (int n, Command *cmd)
  * Description: Prints a list of Pgm:s
  *
  */
-void
-PrintPgm (Pgm *p)
-{
-  if (p == NULL) {
-    return;
-  }
-  else {
-    char **pl = p->pgmlist;
+void PrintPgm (Pgm *p) {
+	if (p == NULL) {
+		return;
+	}
+	else {
+		char **pl = p->pgmlist;
 
-    /* The list is in reversed order so print
-     * it reversed to get right
-     */
-    PrintPgm(p->next);
-    printf("    [");
-    while (*pl) {
-      printf("%s ", *pl++);
-    }
-    printf("]\n");
-  }
+		/* The list is in reversed order so print
+		* it reversed to get right	
+		* */
+		PrintPgm(p->next);
+		printf("    [");
+	while (*pl) {
+		printf("%s ", *pl++);
+		
+	}
+		printf("]\n");
+	}
+}
+
+/*	void execute_pipes(Pgm *p)
+ *	Takes pointer to Pgm which is only called if 
+ *	commands > 2, i.e., pipes */
+
+void execute_pipes(Pgm *p) {
+	int pipefd[2];
+	int pid;
+	int status;
+	
+	if(pipe(pipefd) == -1) {
+		perror("Error creating pipes!\n");
+	}
+	pid = fork();
+
+	if(pid < 0) {
+		printf("Error!");
+	}	
+
+	else if(pid == 0) {
+		
+		// Close the read end of the pipe and redirect write
+		close(pipefd[0]);
+		dup2(pipefd[1], 1);
+		p = p->next;
+	
+		// If there is more commands, do recursive
+		if (p->next) {
+			execute_pipes(p);
+		}
+		//If no more commands execute in recursive manner	
+		else {
+			execvp(*p->pgmlist, p->pgmlist);
+			exit(0);
+		}
+	}
+	// If parent process, close write end and redirect read 
+	else {
+		close(pipefd[1]);
+		dup2(pipefd[0], 0);
+		waitpid(pid, &status, 0);
+		execvp(*p->pgmlist, p->pgmlist);
+	}
+}
+
+// Just a simple signal handler doing nothing
+void signal_handler() {
+	printf("\n");
+}
+
+void execute_command(Command *c) {
+	int pid;	
+
+	Pgm *p = c->pgm;	
+
+	if (p == NULL) {
+		return;
+	}
+		// Built in commands
+		// Returns 0 if identical, thus the !
+		if(!strcmp(*p->pgmlist, "exit")) {
+			exit(0);
+		}
+		// Built in command cd
+		else if(!strcmp(*p->pgmlist, "cd")) {
+			if(chdir(p->pgmlist[1]) == -1) {
+				perror("Error during cd\n");
+			}
+			return;
+		}
+		
+		// Fork first child process
+		pid = fork();
+		
+		// Error
+		if (pid < 0) {
+			perror("Error!\n");
+		}
+		// If backround process is set, reap
+		else if (pid > 0 && c->bakground == 1) {
+			// We don't care about the childs execution
+			// thus, we ignore the SIGCHLD signal
+			signal(SIGCHLD, SIG_IGN);
+		}
+		// If there is no background process
+		// we wait for the child to terminate
+		else if (pid > 0) {
+			waitpid(pid, 0, NULL);
+		}
+		// Check if child and background process is set, then ignore CTRL-C
+		else if (pid == 0 && c->bakground) {
+			signal(SIGINT, SIG_IGN);
+        	if(execvp(*p->pgmlist, p->pgmlist) == -1) {
+            	printf("[username@localhost]$ Command '%s' not found!\n", *p->pgmlist);
+			exit(0);
+         	}
+		}
+		// Child process code
+		else if (pid == 0) {
+			// If rstdout is set
+			if(c->rstdout) {
+			FILE *f = freopen(c->rstdout, "w", stdout);
+			}
+			// If rstdin is set
+			if(c->rstdin) {
+				int fd = open(c->rstdin, 0);
+				dup2(fd, 0);
+			}
+			// If there is more commands call execute_pipes	
+			if(p->next) {
+				execute_pipes(p);
+			}
+			// Execute the last command in linked list
+			// or execute the empty command
+			// And ugly printf function :-O
+			if(execvp(*p->pgmlist, p->pgmlist) == -1) {
+				printf("[username@localhost]$ Command '%s' not found!\n", *p->pgmlist);
+				exit(0);
+			}
+			exit(0);
+		}
 }
 
 /*
@@ -125,23 +256,21 @@ PrintPgm (Pgm *p)
  *
  * Description: Strip whitespace from the start and end of STRING.
  */
-void
-stripwhite (char *string)
-{
-  register int i = 0;
+void stripwhite (char *string) {
+	register int i = 0;
 
-  while (isspace( string[i] )) {
-    i++;
-  }
+	while (isspace( string[i] )) {
+		i++;
+	}
   
-  if (i) {
-    strcpy (string, string + i);
-  }
+	if (i) {
+		strcpy (string, string + i);
+	}
 
-  i = strlen( string ) - 1;
-  while (i> 0 && isspace (string[i])) {
-    i--;
-  }
+	i = strlen( string ) - 1;
+	while (i> 0 && isspace (string[i])) {
+		i--;
+	}	
 
-  string [++i] = '\0';
+	string [++i] = '\0';
 }
