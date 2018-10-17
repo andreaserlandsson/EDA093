@@ -18,7 +18,7 @@ static const struct test tests[] =
     {"alarm-negative", test_alarm_negative},
     /*{"producer-consumer", test_producer_consumer},
     {"narrow-bridge", test_narrow_bridge},*/
-    {"back-scheduler", test_batch_scheduler},
+    {"batch-scheduler", test_batch_scheduler},
   };
 
 static const char *test_name;

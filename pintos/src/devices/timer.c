@@ -90,21 +90,17 @@ void my_thread_action_func(struct thread *t, void *aux) {
 	if(t->status == THREAD_BLOCKED && t->thread_ticks > 0) {
 		if(timer_elapsed(t->thread_start) >= t->thread_ticks) {
 			thread_unblock(t);
-			t->thread_ticks = 0;
 		}
 	}
 }
 
 /* Sleeps for approximately TICKS timer ticks.  Interrupts must
    be turned on. */
-void
-timer_sleep (int64_t ticks) {
+void timer_sleep (int64_t ticks) {
 //	int64_t start = timer_ticks ();
+	struct thread *t = thread_current();
 
 	if(ticks > 0) {
-		struct thread *t = thread_current();
-
-
 		// This is the time the thread has to wait, at least.
 		t->thread_ticks = ticks;
 		t->thread_start = timer_ticks();	
