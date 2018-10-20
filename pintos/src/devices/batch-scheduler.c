@@ -7,6 +7,10 @@
 #include "threads/synch.h"
 #include "threads/thread.h"
 #include "lib/random.h" //generate random numbers
+#include <string.h>
+#include "devices/timer.h"
+#include <list.h>
+#include <unistd.h>
 
 #define BUS_CAPACITY 3
 #define SENDER 0
@@ -23,8 +27,10 @@ typedef struct {
 	int priority;
 } task_t;
 
-void batchScheduler(unsigned int num_tasks_send, unsigned int num_task_receive,
-        unsigned int num_priority_send, unsigned int num_priority_receive);
+
+void print_debug(unsigned int num_tasks_send, unsigned int num_task_receive, unsigned int num_priority_send, unsigned int num_priority_receive);
+
+void batchScheduler(unsigned int num_tasks_send, unsigned int num_task_receive, unsigned int num_priority_send, unsigned int num_priority_receive);
 
 void senderTask(void *);
 void receiverTask(void *);
@@ -33,19 +39,30 @@ void receiverPriorityTask(void *);
 
 
 void oneTask(task_t task);/*Task requires to use the bus and executes methods below*/
-	void getSlot(task_t task); /* task tries to use slot on the bus */
-	void transferData(task_t task); /* task processes data on the bus either sending or receiving based on the direction*/
-	void leaveSlot(task_t task); /* task release the slot */
+void getSlot(task_t task); /* task tries to use slot on the bus */
+void transferData(task_t task); /* task processes data on the bus either sending or receiving based on the direction*/
+void leaveSlot(task_t task); /* task release the slot */
 
-
+// Global values and semaphores
+//
+struct condition cond_norm_send;
+struct condition cond_norm_recv;
+struct condition cond_prio_send;
+struct condition cond_prio_recv;
+struct lock lock;
+int TASKS_ON_BUS = 0;
+int DIRECTION = 0;
 
 /* initializes semaphores */ 
 void init_bus(void){ 
  
-    random_init((unsigned int)123456789); 
-    
-    msg("NOT IMPLEMENTED");
-    /* FIXME implement */
+	random_init((unsigned int)123456789); 
+	cond_init(&cond_norm_send);
+	cond_init(&cond_norm_recv);
+	cond_init(&cond_prio_send);
+	cond_init(&cond_prio_recv);
+
+	lock_init(&lock);
 
 }
 
@@ -60,11 +77,37 @@ void init_bus(void){
  *  Leave the bus (3).
  */
 
-void batchScheduler(unsigned int num_tasks_send, unsigned int num_task_receive,
-        unsigned int num_priority_send, unsigned int num_priority_receive)
-{
-	printf("num_task_send: %d\nnum_task_receive: %d\nnum_priority: %d\nnum_priority_receive: %d", num_tasks_send, num_task_receive, num_priority_send, num_priority_receive);
+void print_debug(unsigned int num_tasks_send, unsigned int num_task_receive,
+                 unsigned int num_priority_send, unsigned int num_priority_receive) {
+
+	printf("num_task_send: %d ", num_tasks_send);
+	printf("num_task_receive: %d ", num_task_receive);
+	printf("num_priority: %d ", num_priority_send);
+	printf("num_priority_receive: %d\n", num_priority_receive);
 }
+
+void batchScheduler(unsigned int num_tasks_send, unsigned int num_task_receive,
+        			unsigned int num_priority_send, unsigned int num_priority_receive) {
+
+	// Debug puropse only
+	//print_debug(num_tasks_send, num_task_receive, num_priority_send, num_priority_receive);
+
+	unsigned int i;
+	for(i = 0; i <= num_tasks_send; i++) {
+		thread_create("Sender", NORMAL, senderTask, NULL);
+	}
+	for(i = 0; i <= num_task_receive; i++) {
+    	thread_create("Receiver", NORMAL, receiverTask, NULL);
+	}
+	for(i = 0; i <= num_priority_send; i++) {
+        thread_create("Priority sender", HIGH, senderPriorityTask, NULL);
+	}
+	for(i = 0; i <= num_priority_receive; i++) {
+        thread_create("Priority receiver", HIGH, receiverPriorityTask, NULL);
+	}
+}
+
+// SENDER = 0 | RECEIVER = 1 | NORMAL = 0 | HIGH = 1
 
 /* Normal task,  sending data to the accelerator */
 void senderTask(void *aux UNUSED){
@@ -99,22 +142,72 @@ void oneTask(task_t task) {
 
 
 /* task tries to get slot on the bus subsystem */
-void getSlot(task_t task) 
-{
-    msg("NOT IMPLEMENTED");
-    /* FIXME implement */
-}
+void getSlot(task_t task) {
 
-/* task processes data on the bus send/receive */
-void transferData(task_t task) 
-{
-    msg("NOT IMPLEMENTED");
-    /* FIXME implement */
+	lock_acquire(&lock);
+	
+	if(TASKS_ON_BUS == 3 || task.direction != DIRECTION && TASKS_ON_BUS > 0) {
+
+		if(task.priority && task.direction == SENDER) {
+			cond_wait(&cond_prio_send, &lock);
+		}
+		else if (task.priority && task.direction == RECEIVER) {
+			cond_wait(&cond_prio_recv, &lock);
+		}
+		else if(!task.priority && task.direction == SENDER) {
+			cond_wait(&cond_norm_send, &lock);
+		}
+		else {
+			cond_wait(&cond_norm_recv, &lock);
+		}
+	}
+	
+	TASKS_ON_BUS++;
+	DIRECTION = task.direction;
+
+	lock_release(&lock);
+	
 }
+/* task processes data on the bus send/receive */
+void transferData(task_t task) {
+
+	//int64_t ticks = 100;
+	//timer_sleep((int64_t) random_ulong() % 10);
+	timer_sleep(10);
+}	
 
 /* task releases the slot */
-void leaveSlot(task_t task) 
-{
-    msg("NOT IMPLEMENTED");
-    /* FIXME implement */
+void leaveSlot(task_t task) {
+	TASKS_ON_BUS--;
+	lock_acquire(&lock);
+
+	if(task.direction == SENDER) {
+		if(!list_empty(&cond_prio_send.waiters)) {
+			cond_signal(&cond_prio_send, &lock);
+		}
+		else if(!list_empty(&cond_prio_send.waiters)) {
+			cond_signal(&cond_norm_send, &lock);
+		}
+		else if(!list_empty(&cond_prio_recv.waiters)) {
+        	cond_signal(&cond_prio_recv, &lock);
+         }
+		else if(!list_empty(&cond_norm_recv.waiters)) {
+			cond_signal(&cond_norm_recv, &lock);
+		}
+	}
+	else {
+		if(!list_empty(&cond_prio_recv.waiters)) {
+             cond_signal(&cond_prio_recv, &lock);
+		}
+		else if(!list_empty(&cond_norm_recv.waiters)) {
+             cond_signal(&cond_norm_recv, &lock);
+		}
+		else if(!list_empty(&cond_prio_recv.waiters)) {
+			cond_signal(&cond_prio_recv, &lock);
+		}
+		else if(!list_empty(&cond_norm_recv.waiters)) {
+			cond_signal(&cond_norm_recv, &lock);
+		}
+	}
+	lock_release(&lock);
 }

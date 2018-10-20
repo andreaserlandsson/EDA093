@@ -97,23 +97,17 @@ void my_thread_action_func(struct thread *t, void *aux) {
 /* Sleeps for approximately TICKS timer ticks.  Interrupts must
    be turned on. */
 void timer_sleep (int64_t ticks) {
-//	int64_t start = timer_ticks ();
-	struct thread *t = thread_current();
 
 	if(ticks > 0) {
+		struct thread *t = thread_current();
+		intr_disable();
 		// This is the time the thread has to wait, at least.
 		t->thread_ticks = ticks;
 		t->thread_start = timer_ticks();	
 
-		intr_disable();
 		thread_block();
 		intr_enable();
 	}
-/*
-	ASSERT (intr_get_level () == INTR_ON);
-	while (timer_elapsed (start) < ticks) 
-		thread_yield ();
-*/
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
