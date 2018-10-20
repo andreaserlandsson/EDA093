@@ -171,9 +171,8 @@ void getSlot(task_t task) {
 /* task processes data on the bus send/receive */
 void transferData(task_t task) {
 
-	//int64_t ticks = 100;
+	timer_sleep(100);
 	//timer_sleep((int64_t) random_ulong() % 10);
-	timer_sleep(10);
 }	
 
 /* task releases the slot */
