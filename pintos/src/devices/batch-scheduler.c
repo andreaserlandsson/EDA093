@@ -27,9 +27,6 @@ typedef struct {
 	int priority;
 } task_t;
 
-
-void print_debug(unsigned int num_tasks_send, unsigned int num_task_receive, unsigned int num_priority_send, unsigned int num_priority_receive);
-
 void batchScheduler(unsigned int num_tasks_send, unsigned int num_task_receive, unsigned int num_priority_send, unsigned int num_priority_receive);
 
 void senderTask(void *);
@@ -43,8 +40,7 @@ void getSlot(task_t task); /* task tries to use slot on the bus */
 void transferData(task_t task); /* task processes data on the bus either sending or receiving based on the direction*/
 void leaveSlot(task_t task); /* task release the slot */
 
-// Global values and semaphores
-//
+// Global variables and semaphores
 struct condition cond_norm_send;
 struct condition cond_norm_recv;
 struct condition cond_prio_send;
@@ -55,7 +51,8 @@ int DIRECTION = 0;
 
 /* initializes semaphores */ 
 void init_bus(void){ 
- 
+
+	// Initate semaphores and locks 
 	random_init((unsigned int)123456789); 
 	cond_init(&cond_norm_send);
 	cond_init(&cond_norm_recv);
@@ -77,21 +74,10 @@ void init_bus(void){
  *  Leave the bus (3).
  */
 
-void print_debug(unsigned int num_tasks_send, unsigned int num_task_receive,
-                 unsigned int num_priority_send, unsigned int num_priority_receive) {
-
-	printf("num_task_send: %d ", num_tasks_send);
-	printf("num_task_receive: %d ", num_task_receive);
-	printf("num_priority: %d ", num_priority_send);
-	printf("num_priority_receive: %d\n", num_priority_receive);
-}
-
 void batchScheduler(unsigned int num_tasks_send, unsigned int num_task_receive,
         			unsigned int num_priority_send, unsigned int num_priority_receive) {
 
-	// Debug puropse only
-	//print_debug(num_tasks_send, num_task_receive, num_priority_send, num_priority_receive);
-
+	// For each task that comes we will loop and create a thread per task.
 	unsigned int i;
 	for(i = 0; i <= num_tasks_send; i++) {
 		thread_create("Sender", NORMAL, senderTask, NULL);
@@ -106,8 +92,6 @@ void batchScheduler(unsigned int num_tasks_send, unsigned int num_task_receive,
         thread_create("Priority receiver", HIGH, receiverPriorityTask, NULL);
 	}
 }
-
-// SENDER = 0 | RECEIVER = 1 | NORMAL = 0 | HIGH = 1
 
 /* Normal task,  sending data to the accelerator */
 void senderTask(void *aux UNUSED){
@@ -144,42 +128,61 @@ void oneTask(task_t task) {
 /* task tries to get slot on the bus subsystem */
 void getSlot(task_t task) {
 
+	// Lock the bus
 	lock_acquire(&lock);
 	
+	// If the bus is full and the direction is wrong we must wait	
 	if(TASKS_ON_BUS == 3 || task.direction != DIRECTION && TASKS_ON_BUS > 0) {
-
+		
+		// If my prio is high and I am a sender, add me to this queue.
 		if(task.priority && task.direction == SENDER) {
 			cond_wait(&cond_prio_send, &lock);
 		}
+		// If my prio is high and I am a receiver, add me to this queue.
 		else if (task.priority && task.direction == RECEIVER) {
 			cond_wait(&cond_prio_recv, &lock);
 		}
+		// If my prio is normal and I am a sender, add me to this queue.
 		else if(!task.priority && task.direction == SENDER) {
 			cond_wait(&cond_norm_send, &lock);
 		}
+		// Else I must be a normal and a receving task, add me to this queue.
 		else {
 			cond_wait(&cond_norm_recv, &lock);
 		}
 	}
 	
+	// If there is a least one slot available on the bus and the direction
+	// is same as mine.	
 	TASKS_ON_BUS++;
 	DIRECTION = task.direction;
 
+	// Release lock
 	lock_release(&lock);
 	
 }
 /* task processes data on the bus send/receive */
 void transferData(task_t task) {
-
-	timer_sleep(100);
-	//timer_sleep((int64_t) random_ulong() % 10);
+	
+	// Just a random sleep function that sleeps for some time between 0-10
+	timer_sleep((int64_t) random_ulong() % 10);
 }	
 
 /* task releases the slot */
 void leaveSlot(task_t task) {
-	TASKS_ON_BUS--;
+	// Lock and make space on the bus
 	lock_acquire(&lock);
-
+	TASKS_ON_BUS--;
+/*
+ * The following code will check wheather you are a sender or receiver
+ * Depending on that, you first want to let every high prio task in your direction
+ * have the bus. If there is no high prio task, then you can signal to the normal tasks
+ * in the same direction of yours.
+ * If there is no high or normal process in your direction, start signaling to high 
+ * prio processes in the other direction and if there are no such tasks keep trying with
+ * the normal processes.
+ * */	
+	
 	if(task.direction == SENDER) {
 		if(!list_empty(&cond_prio_send.waiters)) {
 			cond_signal(&cond_prio_send, &lock);

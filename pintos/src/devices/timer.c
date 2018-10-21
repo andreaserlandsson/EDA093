@@ -85,9 +85,12 @@ timer_elapsed (int64_t then)
   return timer_ticks () - then;
 }
 
+// This function is called from the timer_interrupt function
 void my_thread_action_func(struct thread *t, void *aux) {
 
+	// Checks if thread is blocked and ticks > 0
 	if(t->status == THREAD_BLOCKED && t->thread_ticks > 0) {
+		// Here we check how many ticks there is left until we will be unblocked
 		if(timer_elapsed(t->thread_start) >= t->thread_ticks) {
 			thread_unblock(t);
 		}
@@ -98,13 +101,15 @@ void my_thread_action_func(struct thread *t, void *aux) {
    be turned on. */
 void timer_sleep (int64_t ticks) {
 
+	// Check if ticks is larger than 0, else we will not sleep
 	if(ticks > 0) {
 		struct thread *t = thread_current();
 		intr_disable();
 		// This is the time the thread has to wait, at least.
 		t->thread_ticks = ticks;
 		t->thread_start = timer_ticks();	
-
+	
+		// Block thread
 		thread_block();
 		intr_enable();
 	}
