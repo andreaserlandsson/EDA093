@@ -5,13 +5,12 @@
 			|   DESIGN DOCUMENT  |
 			+--------------------+
 				   
----- GROUP XX ----
+---- GROUP 12 ----
 
 >> Fill in the group number, names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Andréas Erlandsson anderlan@student.chalmers.se
+Magnus Brattlof brattlof@student.chalmers.se
 
 ---- PRELIMINARIES ----
 
@@ -31,26 +30,49 @@ FirstName LastName <email@domain.example>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+int64_t thread_ticks;
+This one is used for saving the amount of ticks thre thread sleeps.
+
+int64_t thread_start;
+This one we use for knowing when the thread called timer_sleep function
+
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe what happens in a call to timer_sleep(),
 >> including the effects of the timer interrupt handler.
 
+A thread calls timer_sleep with a input ticks, which indicates how long the
+process wants to sleep. Every tick in the system triggers a function call to the function
+timer_interrupt which iterates over the blocked threads and invokes them if they meet
+a certain condition.
+
 >> A3: What steps are taken to minimize the amount of time spent in
 >> the timer interrupt handler?
+
+We call the function thread_foreach with the function my_thread_action_func 
+as parameter and iterate through all the blocked threads. If the thread doesnt meet our 
+requirement we will return from the function immediately not wasting any time.
 
 ---- SYNCHRONIZATION ----
 
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
 
+We turn off interrupts within the timer_sleep function, thus avoiding multiple threads
+simultaneously.
+
 >> A5: How are race conditions avoided when a timer interrupt occurs
 >> during a call to timer_sleep()?
+
+Because interrupts are disabled, the thread current executing will not be switched.
+We let the thread finnish executing and enable interrupts before leaving timer_sleep
 
 ---- RATIONALE ----
 
 >> A6: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
+
+We choose this design because of the easy implementation and readability.
 
 			    BATCH SCHEDULING
 			    ================
@@ -60,25 +82,57 @@ FirstName LastName <email@domain.example>
 >> `struct' member, global or static variable, semaphore, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+struct condition cond_norm_send;
+This is used for normal sender queue.
+
+struct condition cond_norm_recv;
+This is used for normal receivers queue.
+
+struct condition cond_prio_send;
+This is used for prio senders.
+
+struct condition cond_prio_recv;
+This is used for prio receivers.
+
+struct lock lock;
+This is used for a mutex lock
+
+int TASKS_ON_BUS = 0;
+Global variable indicating how many theads are currently on the bus.
+
+int DIRECTION = 0;
+Global variable indicating which direction the bus is going.
+
 ---- SYNCHRONIZATION ----
 
 >> C1: How does your solution guarantee that no more that 3 tasks
 >> are using the bus in the same direction?
+By implementing 4 semaphores, which indicates sender/recv and normal/high
 
 >> C2: What prevents tasks from opposite directions from using the
 >> bus simultaneously?
+He sees that the direction on the bus is not his direction, thus waiting in his corresponding 
+queue.
 
 >> C3: How does your solution grant priority to high priority tasks over
 >> the waiting tasks in the same direction?
+
+We let high priority threads run first, when leaving the bus we check first after high prio threads in the same direction that we can signal to, else we check the other direction of high prio processes and let them on the bus. Thus allowing high priority processes to run first
 
 >> C4: How do you guarantee that despite having priority, high priority
 >> tasks do not start using the bus while there are still still using
 >> it in the oposite direction?
 
+We check the direction on the bus, if it is not our direction we will wait in a high priority 
+queue. When the other high prio threads are done, they will maybe allow us on the bus depending
+on if they have any high prio in their own direction queue.
+
 ---- RATIONALE ----
 
 >> C6: Why did you choose this design? Did you consider other design 
 >> alternatives? In what ways is it superior to another design you considered?
+
+It's an elegant solution with very little code but acheiving our derised goals.
 
 
 			   SURVEY QUESTIONS (optional)

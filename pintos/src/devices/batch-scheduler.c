@@ -131,7 +131,7 @@ void getSlot(task_t task) {
 	// Lock the bus
 	lock_acquire(&lock);
 	
-	// If the bus is full and the direction is wrong we must wait	
+	// If the bus is full and the direction is wrong we must wait, i.e adding to a queue.
 	if(TASKS_ON_BUS == 3 || task.direction != DIRECTION && TASKS_ON_BUS > 0) {
 		
 		// If my prio is high and I am a sender, add me to this queue.
