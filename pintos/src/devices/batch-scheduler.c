@@ -181,13 +181,19 @@ void leaveSlot(task_t task) {
  * If there is no high or normal process in your direction, start signaling to high 
  * prio processes in the other direction and if there are no such tasks keep trying with
  * the normal processes.
- * */	
-	
+ * */
+
+	/* If direction is SEND we prioritize first:
+ * 1) High send
+ * 2) High recv
+ * 3) Norm send
+ * 4) Norm recv */	
+
 	if(task.direction == SENDER) {
 		if(!list_empty(&cond_prio_send.waiters)) {
 			cond_signal(&cond_prio_send, &lock);
 		}
-		else if(!list_empty(&cond_prio_send.waiters)) {
+		else if(!list_empty(&cond_norm_send.waiters)) {
 			cond_signal(&cond_norm_send, &lock);
 		}
 		else if(!list_empty(&cond_prio_recv.waiters)) {
@@ -197,6 +203,11 @@ void leaveSlot(task_t task) {
 			cond_signal(&cond_norm_recv, &lock);
 		}
 	}
+	/* Else if direction is RECV we prioritize first:
+ * 	1) High recv
+ * 	2) High send
+ * 	3) Norm recv
+ * 	4) Norm send */
 	else {
 		if(!list_empty(&cond_prio_recv.waiters)) {
              cond_signal(&cond_prio_recv, &lock);
@@ -204,11 +215,11 @@ void leaveSlot(task_t task) {
 		else if(!list_empty(&cond_norm_recv.waiters)) {
              cond_signal(&cond_norm_recv, &lock);
 		}
-		else if(!list_empty(&cond_prio_recv.waiters)) {
-			cond_signal(&cond_prio_recv, &lock);
+		else if(!list_empty(&cond_prio_send.waiters)) {
+			cond_signal(&cond_prio_send, &lock);
 		}
-		else if(!list_empty(&cond_norm_recv.waiters)) {
-			cond_signal(&cond_norm_recv, &lock);
+		else if(!list_empty(&cond_norm_send.waiters)) {
+			cond_signal(&cond_norm_send, &lock);
 		}
 	}
 	lock_release(&lock);
